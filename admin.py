@@ -39,7 +39,7 @@ class Admin(webapp2.RequestHandler):
 def format_timedelta(value):
     t= datetime.datetime.now() - value
     if  t.days>0 :
-        return value.strtime('le %d/%m/%Y')
+        return value.strftime('le %d/%m/%Y')
     elif t.seconds>3599 :
         return 'il y a '+str(t.seconds/3600)+'h'
     elif t.seconds>59 :
