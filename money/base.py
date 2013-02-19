@@ -240,7 +240,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
   var sid = my_getcookie("fa_" + location.hostname.replace(/\./g, "_") + "_sid");
   var default_point = 10;
   $("#field_id-13 dd div").wrapInner('&lt;span class="num_point" /&gt;').append('<span class="history_point"> <a href="'+money_app_url+'/history/'+to+'"><input type="button" value="Historique" /></a> </span>');
-  if(to != uid) {
+  if(uid && to != uid) {
 	fa_money_callback = function(error, message) {
 	  if(error) {
 		alert("Erreur : " + message)
