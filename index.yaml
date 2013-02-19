@@ -10,14 +10,22 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: __BlobInfo__
+- kind: Log
+  ancestor: yes
   properties:
-  - name: filename
-  - name: creation
+  - name: date
     direction: desc
 
-- kind: __BlobInfo__
+- kind: Log
+  ancestor: yes
   properties:
-  - name: filename=
-  - name: creation
+  - name: id_from
+  - name: date
+    direction: desc
+
+- kind: Log
+  ancestor: yes
+  properties:
+  - name: id_to
+  - name: date
     direction: desc

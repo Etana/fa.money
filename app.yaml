@@ -1,20 +1,13 @@
-application: zufont
+application: fa-money
 version: 1
 runtime: python27
 api_version: 1
 threadsafe: true
 
 handlers:
-- url: /(n/[^/]+|f/[A-Za-z0-9_=-]+(/[^/]*)?)
-  script: f.app
+- url: /fa_money/[a-z0-9.-]+/(history/[1-9][0-9]*)?
+  script: base.app
 
-- url: /logout
-  script: logout.app
-
-- url: /(|upload|delete/[A-Za-z0-9_=-]+)
-  script: admin.app
+- url: /fa_money/[a-z0-9.-]+/admin
+  script: base.app
   login: admin
-
-- url: /favicon\.ico
-  static_files: favicon.ico
-  upload: favicon\.ico
