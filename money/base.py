@@ -46,20 +46,16 @@ class Change(webapp2.RequestHandler):
 		if options is None:
 			self.rep("l'outil de transfert n'a pas été configuré")
 			return
-		# récupération du sid
-		user_sid=self.request.get('sid')
-		if user_sid is None or re.match('^[a-f0-9]{32}$', user_sid) is None:
+		# on récupère le &from=
+		id_from=self.request.get('from')
+		if id_from is None or re.match('^[1-9][0-9]*$',id_from) is None:
 			self.rep("problème de requête")
 			return
-		# récupération du nom d'utilisateur et identifiant utilisateur de la page des variables de forum
-		opener = urllib2.build_opener()
-		opener.addheaders.append(('Cookie', 'fa_'+domain.replace('.','_')+'_sid='+user_sid))
-		miscvars = re.search('<strong>&#123;USERLINK&#125;</strong>&nbsp;:&nbsp;<a href="http://[^/"]+/profile\.forum\?mode=viewprofile&amp;u=([1-9][0-9]*)">([^<]+)</a>', opener.open('http://'+domain+"/popup_help.forum?l=miscvars").read())
-		if miscvars is None:
-			self.rep("problème de vérification de compte")
-			return
-		id_from= miscvars.group(1)
-		str_from= miscvars.group(2).replace('&gt;','>').replace('&lt;','<').replace('&quot;','"').replace('&amp;','&')
+		# on récupère le &from_username
+		str_from=self.request.get('from_username')
+		if str_from is None:
+			self.rep("problème de requête")
+			return		
 		# on récupère le &to=
 		id_to=self.request.get('to')
 		if id_to is None or re.match('^[1-9][0-9]*$',id_to) is None:
@@ -236,11 +232,11 @@ class Admin(webapp2.RequestHandler):
 location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
   var to = location.pathname.match(/^\/u([1-9][0-9]*)/)[1];
   var to_username = document.title.replace(/^.*? - /, "");
-  var uid = +(my_getcookie("fa_" + location.host.replace(/\./g, "_") + "_data") || "").replace(/^.*"userid";(s:[1-9][0-9]*:"([1-9][0-9]*)"|i:([1-9][0-9]*));.*$/, "$2$3");
-  var sid = my_getcookie("fa_" + location.hostname.replace(/\./g, "_") + "_sid");
+  var from = +(my_getcookie("fa_" + location.host.replace(/\./g, "_") + "_data") || "").replace(/^.*"userid";(s:[1-9][0-9]*:"([1-9][0-9]*)"|i:([1-9][0-9]*));.*$/, "$2$3");
+  var from_username = $('#logout img').attr('alt').replace(/^.*?\[ (.*) \]$/,'$1');
   var default_point = 10;
   $("#field_id-13 dd div").wrapInner('&lt;span class="num_point" /&gt;').append('<span class="history_point"> <a href="'+money_app_url+'/history/'+to+'"><input type="button" value="Historique" /></a> </span>');
-  if(uid && to != uid) {
+  if(from && to != from) {
 	fa_money_callback = function(error, message) {
 	  if(error) {
 		alert("Erreur : " + message)
@@ -256,7 +252,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 		return
 	  }
 	  default_point = num;
-	  $.getScript(money_app_url+"/?sid=" + sid + "&to=" + to + "&to_username=" + encodeURIComponent(to_username) + "&num=" + num.replace(/(^\s*|\s*$)/g, ""), function() {
+	  $.getScript(money_app_url+"/?from=" + from + "&from_username='+encodeURIComponent(from_username)+'&to=" + to + "&to_username=" + encodeURIComponent(to_username) + "&num=" + num.replace(/(^\s*|\s*$)/g, ""), function() {
 		bouton.prop("disabled", false)
 	  })
 	})
