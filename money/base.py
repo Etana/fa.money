@@ -12,8 +12,8 @@ class Options(db.Model):
 
 # modèle d'un message de log
 class Log(db.Model):
-	id_to= db.IntegerProperty() 
-	str_to= db.StringProperty() 
+	id_to= db.IntegerProperty()
+	str_to= db.StringProperty()
 	id_from= db.IntegerProperty()
 	str_from= db.StringProperty()
 	num= db.IntegerProperty()
@@ -36,7 +36,7 @@ class Change(webapp2.RequestHandler):
 		else:
 			erreur='0'
 		self.response.write('fa_money_callback('+erreur+','+json.dumps(message)+')')
-		
+
 	# affichage
 	def get(self,domain):
 		# on déclare que le document renvoyé est du javascript
@@ -49,17 +49,17 @@ class Change(webapp2.RequestHandler):
 		# on récupère le &from=
 		id_from=self.request.get('from')
 		if id_from is None or re.match('^[1-9][0-9]*$',id_from) is None:
-			self.rep("problème de requête")
-			return
+                    self.rep("probleme de requête")
+		    return
 		# on récupère le &from_username
 		str_from=self.request.get('from_username')
 		if str_from is None:
-			self.rep("problème de requête")
-			return		
+			self.rep("probleme de requête")
+			return
 		# on récupère le &to=
 		id_to=self.request.get('to')
 		if id_to is None or re.match('^[1-9][0-9]*$',id_to) is None:
-			self.rep("problème de requête")
+			self.rep("probleme de requête")
 			return
 		if id_to==id_from:
 			self.rep("vous ne pouvez vous envoyez vous-même des points")
@@ -67,12 +67,12 @@ class Change(webapp2.RequestHandler):
 		# on récupère le &to_username
 		str_to=self.request.get('to_username')
 		if str_to is None:
-			self.rep("problème de requête")
+			self.rep("probleme de requête")
 			return
 		# on récupère le &num=
 		num=self.request.get('num')
 		if num is None or re.match('^[1-9][0-9]*$',num) is None:
-			self.rep("problème de requête")
+			self.rep("probleme de requête")
 			return
 		# on conserve les cookies
 		cj = cookielib.CookieJar()
@@ -82,18 +82,23 @@ class Change(webapp2.RequestHandler):
 		# ouverture du panneau d'admin afin de reçevoir un tid qui permet de visiter le panneau
 		r = opener.open('http://'+domain+'/admin')
 		# on prend le tid de l'adresse vers laquelle on a été redirigé
+                charset_match = re.search('charset=([^"]*)', r.read())
+                if charset_match is None:
+                    charset = "utf-8"
+                else:
+                    charset = charset_match.group(1)
 		tid=r.geturl()[23+len('http://'+domain):]
 		if re.match('^[a-f0-9]{32}$',tid) is None:
 			self.rep("l'outil de transfert a été mal configuré")
 			return
 		# on va rechercher la page avec le nombre de point du donateur
-		r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_from))+"&submit_search_user=1")
+		r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_from).encode(charset))+"&submit_search_user=1")
 		# on prend le nombre de point du donateur
-		from_match= re.search('<input type="text" name="points_new_value\['+id_from+'\]" value="([+-][0-9]+)" />',r.read())
+		from_match= re.search('<input type="text" name="points_new_value\['+id_from+'\]" value="([+-]?[0-9]+)" />',r.read())
 		if from_match is None:
 			memcache.delete('lock'+id_from)
 			memcache.delete('lock'+id_to)
-			self.rep("problème pour prendre la valeur actuelle des points de %s" %  str_from)
+			self.rep("probleme pour prendre la valeur actuelle des points de %s" %  str_from)
 			return
 		# on regarde si son nombre de point est plus petit que le nombre de point qu'il donne
 		if int(from_match.group(1)) < int(num):
@@ -102,11 +107,11 @@ class Change(webapp2.RequestHandler):
 			self.rep("vous n'avez que %d points, ce n'est pas assez pour en donner %d" %  (int(from_match.group(1)), int(num)))
 			return
 		# on va rechercher la page avec le nombre de point du reçeveur
-		r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_to))+"&submit_search_user=1")
+		r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_to).encode(charset))+"&submit_search_user=1")
 		# on prend le nombre de point du reçeveur
 		to_match= re.search('<input type="text" name="points_new_value\['+id_to+'\]" value="([+-]?[0-9]+)" />',r.read())
 		if to_match is None:
-			self.rep(u"problème pour prendre la valeur actuelle des points de %s" %  str_to)
+			self.rep(u"probleme pour prendre la valeur actuelle des points de %s" %  str_to)
 			return
 		# on envoit les nouveaux nombres de point
 		opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&points_new_value["+id_from+"]="+str(int(from_match.group(1))-int(num))+"&points_new_value["+id_to+"]="+str(int(to_match.group(1))+int(num))+"&submit=1")
@@ -144,7 +149,7 @@ class History(webapp2.RequestHandler):
 			sender= '<table><tr><td>Jamais envoy&eacute; de points</td></tr></table>';
 		else:
 			sender= '<table><tr><th>Re&ccedil;eveur</th><th>Nombre de point</th><th>Date</th><tr><tr>'+'</tr><tr>'.join(sender)+'</tr></table>'
-			
+
 		# affichage de la page
 		self.response.out.write('''<html>
 
@@ -174,7 +179,7 @@ class History(webapp2.RequestHandler):
 				'http://'+domain+'/u'+user
 			)
 		)
-	   
+
 
 # page pour administration
 class Admin(webapp2.RequestHandler):
@@ -270,7 +275,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 				users.create_logout_url(self.request.uri)
 			)
 		)
-	
+
 	# traitement formulaire
 	def post(self, domain):
 			# on prend le lien jusqu'au troisieme slash
@@ -286,10 +291,10 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 class UTC(datetime.tzinfo):
   def utcoffset(self, dt):
 	return datetime.timedelta(0)
- 
+
   def dst(self, dt):
 	return datetime.timedelta(0)
- 
+
   def tzname(self, dt):
 	return "UTC"
 
