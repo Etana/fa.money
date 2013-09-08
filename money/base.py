@@ -252,7 +252,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 		return
 	  }
 	  default_point = num;
-	  $.getScript(money_app_url+"/?from=" + from + "&from_username='+encodeURIComponent(from_username)+'&to=" + to + "&to_username=" + encodeURIComponent(to_username) + "&num=" + num.replace(/(^\s*|\s*$)/g, ""), function() {
+	  $.getScript(money_app_url+"/?from=" + from + "&from_username="+encodeURIComponent(from_username)+"&to=" + to + "&to_username=" + encodeURIComponent(to_username) + "&num=" + num.replace(/(^\s*|\s*$)/g, ""), function() {
 		bouton.prop("disabled", false)
 	  })
 	})
