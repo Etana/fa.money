@@ -2,9 +2,12 @@
 
 import webapp2,cgi,re,cookielib,urllib2,urllib,json,datetime
 
+
 from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.api import memcache
+
+ripe = 'https://apps.db.ripe.net/search/query.html?search%3AdoSearch=Search&searchtext='
 
 class Options(db.Model):
 	admin_username= db.StringProperty()
@@ -19,6 +22,7 @@ class Log(db.Model):
 	num= db.IntegerProperty()
 	date= db.DateTimeProperty(auto_now_add=True)
 	raison= db.StringProperty()
+	ip= db.StringProperty()
 
 # fonction pour prendre les options
 def get_options(domain):
@@ -122,7 +126,7 @@ class Change(webapp2.RequestHandler):
 		# on envoit les nouveaux nombres de point
 		opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&points_new_value["+id_from+"]="+str(int(from_match.group(1))-int(num))+"&points_new_value["+id_to+"]="+str(int(to_match.group(1))+int(num))+"&submit=1")
 		# on enregistre la transmission
-		Log(parent=Options.get_by_key_name(domain+'_options'),id_to=int(id_to), str_to=str_to, id_from=int(id_from), str_from=str_from, num=int(num), raison=raison).put()
+		Log(parent=Options.get_by_key_name(domain+'_options'),id_to=int(id_to), str_to=str_to, id_from=int(id_from), str_from=str_from, num=int(num), raison=raison, ip=self.request.remote_addr).put()
 		# on envoie le nouveau nombre de point du reçeveur
 		self.rep(str(int(to_match.group(1))+int(num)), False)
 
@@ -138,31 +142,39 @@ class History(webapp2.RequestHandler):
 		receiver= []
 		if ancestor:
 			for log in Log.all().ancestor(ancestor).filter('id_to =',int(user)).order('-date'):
-                                if hasattr(log, "raison") and log.raison is not None:
-                                    log_raison = log.raison
-                                else:
+                                if log.raison is None:
                                     log_raison = ""
+                                else:
+                                    log_raison = log.raison
+                                if log.ip is None:
+                                    ip = ""
+                                else:
+                                    ip = log.ip
 				log.date=log.date.replace(tzinfo=UTC()).astimezone(CET())
-				receiver.append('<td><a href="http://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>')
+				receiver.append('<td><a href="http://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
 		if len(receiver)<1:
 			receiver= '<table><tr><td>Jamais re&ccedil;u de points</td></tr></table>';
 		else:
-			receiver= '<table><tr><th>Envoyeur</th><th>Nombre de point</th><th>Raison</th><th>Date</th><tr><tr>'+'</tr><tr>'.join(receiver)+'</tr></table>'
+			receiver= '<table><tr><th>Envoyeur</th><th>Nombre de point</th><th>Raison</th><th>Date</th>'+('<th>IP</th>' if users.is_current_user_admin() else '')+'<tr><tr>'+'</tr><tr>'.join(receiver)+'</tr></table>'
 
 		# on va rechercher toutes les fois où le membre a été envoyeur
 		sender= []
 		if ancestor:
 			for log in Log.all().ancestor(ancestor).filter('id_from =',int(user)).order('-date'):
-                                if hasattr(log, "raison") and log.raison is not None:
-                                    log_raison = log.raison
-                                else:
+                                if log.raison is None:
                                     log_raison = ""
+                                else:
+                                    log_raison = log.raison
+                                if log.ip is None:
+                                    ip = ""
+                                else:
+                                    ip = log.ip
 				log.date=log.date.replace(tzinfo=UTC()).astimezone(CET())
-				sender.append('<td><a href="http://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'<td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>')
+				sender.append('<td><a href="http://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'<td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
 		if len(sender)<1:
 			sender= '<table><tr><td>Jamais envoy&eacute; de points</td></tr></table>';
 		else:
-			sender= '<table><tr><th>Re&ccedil;eveur</th><th>Nombre de point</th><th>Raison</th><th>Date</th><tr><tr>'+'</tr><tr>'.join(sender)+'</tr></table>'
+			sender= '<table><tr><th>Re&ccedil;eveur</th><th>Nombre de point</th><th>Raison</th><th>Date</th>'+('<th>IP</th>' if users.is_current_user_admin() else '')+'<tr><tr>'+'</tr><tr>'.join(sender)+'</tr></table>'
 
 		# affichage de la page
 		self.response.out.write('''<html>
@@ -209,16 +221,20 @@ class Admin(webapp2.RequestHandler):
 		ancestor= get_options(domain)
 		if ancestor:
 			for log in Log.all().ancestor(ancestor).order('-date').fetch(100):
-                                if hasattr(log, "raison") and log.raison is not None:
-                                    log_raison = log.raison
-                                else:
+                                if log.raison is None:
                                     log_raison = ""
+                                else:
+                                    log_raison = log.raison
+                                if log.ip is None:
+                                    ip = ""
+                                else:
+                                    ip = log.ip
 				log.date=log.date.replace(tzinfo=UTC()).astimezone(CET())
-				logs.append('<td><a href="http://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td><a href="http://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>')
+				logs.append('<td><a href="http://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td><a href="http://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
 		if len(logs)<1:
 			logs= '<table><tr><td>Aucune transmission de point r&eacute;alis&eacute;e</td></tr></table>';
 		else:
-			logs= '<table><tr><th>Envoyeur</th><th>Re&ccedil;eveur</th><th>Nombre de point</th><th>Raison</th><th>Date</th><tr><tr>'+'</tr><tr>'.join(logs)+'</tr></table>'
+			logs= '<table><tr><th>Envoyeur</th><th>Re&ccedil;eveur</th><th>Nombre de point</th><th>Raison</th><th>Date</th>'+('<th>IP</th>' if users.is_current_user_admin() else '')+'<tr><tr>'+'</tr><tr>'.join(logs)+'</tr></table>'
 
 		# affichage de la page
 		self.response.out.write('''<html>
