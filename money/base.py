@@ -88,7 +88,7 @@ class Change(webapp2.RequestHandler):
 		cj = cookielib.CookieJar()
 		opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
 		# connexion au forum
-		opener.open('http://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username)+'&password='+urllib.quote_plus(options.admin_password)+'&login=1&redirect=/admin/&admin=1')
+		opener.open('http://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode('utf-8'))+'&password='+urllib.quote_plus(options.admin_password.encode('utf-8'))+'&login=1&redirect=/admin/&admin=1')
 		# ouverture du panneau d'admin afin de reçevoir un tid qui permet de visiter le panneau
 		r = opener.open('http://'+domain+'/admin')
 		# on prend le tid de l'adresse vers laquelle on a été redirigé
