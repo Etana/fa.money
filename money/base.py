@@ -12,6 +12,7 @@ ripe = 'https://apps.db.ripe.net/search/query.html?search%3AdoSearch=Search&sear
 class Options(db.Model):
 	admin_username= db.StringProperty()
 	admin_password= db.StringProperty()
+	charset= db.StringProperty(default='utf-8')
 
 # modèle d'un message de log
 class Log(db.Model):
@@ -29,6 +30,8 @@ def get_options(domain):
 	options= memcache.get(domain+'_options')
 	if options is None:
 		options= Options.get_by_key_name(domain+'_options')
+	if options.charset is None:
+		options.charset= 'utf-8'
 	return options
 
 # page pour administration
@@ -88,7 +91,7 @@ class Change(webapp2.RequestHandler):
 		cj = cookielib.CookieJar()
 		opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
 		# connexion au forum
-		opener.open('http://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode('utf-8'))+'&password='+urllib.quote_plus(options.admin_password.encode('utf-8'))+'&login=1&redirect=/admin/&admin=1')
+                opener.open('http://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode(options.charset))+'&password='+urllib.quote_plus(options.admin_password.encode(options.charset))+'&login=1&redirect=/admin/&admin=1')
 		# ouverture du panneau d'admin afin de reçevoir un tid qui permet de visiter le panneau
 		r = opener.open('http://'+domain+'/admin')
 		# on prend le tid de l'adresse vers laquelle on a été redirigé
@@ -315,8 +318,14 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 	def post(self, domain):
 			# on prend le lien jusqu'au troisieme slash
 			link=re.sub(r'^(http://[^/]+)/?.*$',r'\1',self.request.get('link'))
+                        # on va chercher charset
+                        charset_match = re.search('charset=([^"]*)', urllib2.urlopen('http://'+domain+'/admin/login.forum?redirect=/admin').read())
+                        if charset_match is None:
+                            charset= 'utf-8'
+                        else:
+                            charset= charset_match.group(1)
 			# on enregistre les options dans la base de donnée
-			Options(key_name=domain+'_options', admin_username=self.request.get('username'), admin_password=self.request.get('password')).put()
+			Options(key_name=domain+'_options', admin_username=self.request.get('username'), admin_password=self.request.get('password'), charset=charset).put()
 			# on supprime les options pouvant se trouver dans le cache
 			memcache.delete(domain+'_options')
 			# on redirige vers le formulaire
