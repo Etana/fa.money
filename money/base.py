@@ -30,7 +30,7 @@ def get_options(domain):
 	options= memcache.get(domain+'_options')
 	if options is None:
 		options= Options.get_by_key_name(domain+'_options')
-	if options.charset is None:
+	if options and options.charset is None:
 		options.charset= 'utf-8'
 	return options
 
