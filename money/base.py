@@ -47,6 +47,7 @@ class Change(webapp2.RequestHandler):
 
     # affichage
     def get(self,domain):
+        scheme = self.request.scheme
         # on déclare que le document renvoyé est du javascript
         self.response.content_type= 'application/javascript'
         # saisie des options du compte admin
@@ -91,21 +92,21 @@ class Change(webapp2.RequestHandler):
         cj = cookielib.CookieJar()
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
         # connexion au forum
-        opener.open('http://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode(options.charset))+'&password='+urllib.quote_plus(options.admin_password.encode(options.charset))+'&login=1&redirect=/admin/&admin=1')
+        opener.open(scheme+'://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode(options.charset))+'&password='+urllib.quote_plus(options.admin_password.encode(options.charset))+'&login=1&redirect=/admin/&admin=1')
         # ouverture du panneau d'admin afin de reçevoir un tid qui permet de visiter le panneau
-        r = opener.open('http://'+domain+'/admin')
+        r = opener.open(scheme+'://'+domain+'/admin')
         # on prend le tid de l'adresse vers laquelle on a été redirigé
         charset_match = re.search('charset=([^"]*)', r.read())
         if charset_match is None:
             charset = "utf-8"
         else:
             charset = charset_match.group(1)
-        tid=r.geturl()[23+len('http://'+domain):]
+        tid=r.geturl()[23+len(scheme+'://'+domain):]
         if re.match('^[a-f0-9]{32}$',tid) is None:
             self.rep("l'outil de transfert a été mal configuré")
             return
         # on va rechercher la page avec le nombre de point du donateur
-        r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_from).encode(charset))+"&submit_search_user=1")
+        r= opener.open(scheme+'://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_from).encode(charset))+"&submit_search_user=1")
         # on prend le nombre de point du donateur
         from_match= re.search('<input type="text" name="points_new_value\['+id_from+'\]" value="([+-]?[0-9]+)" />',r.read())
         if from_match is None:
@@ -120,14 +121,14 @@ class Change(webapp2.RequestHandler):
             self.rep("vous n'avez que %d points, ce n'est pas assez pour en donner %d" %  (int(from_match.group(1)), int(num)))
             return
         # on va rechercher la page avec le nombre de point du reçeveur
-        r= opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_to).encode(charset))+"&submit_search_user=1")
+        r= opener.open(scheme+'://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_to).encode(charset))+"&submit_search_user=1")
         # on prend le nombre de point du reçeveur
         to_match= re.search('<input type="text" name="points_new_value\['+id_to+'\]" value="([+-]?[0-9]+)" />',r.read())
         if to_match is None:
             self.rep(u"probleme pour prendre la valeur actuelle des points de %s" %  str_to)
             return
         # on envoit les nouveaux nombres de point
-        opener.open('http://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&points_new_value["+id_from+"]="+str(int(from_match.group(1))-int(num))+"&points_new_value["+id_to+"]="+str(int(to_match.group(1))+int(num))+"&submit=1")
+        opener.open(scheme+'://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&points_new_value["+id_from+"]="+str(int(from_match.group(1))-int(num))+"&points_new_value["+id_to+"]="+str(int(to_match.group(1))+int(num))+"&submit=1")
         # on enregistre la transmission
         Log(parent=Options.get_by_key_name(domain+'_options'),id_to=int(id_to), str_to=str_to, id_from=int(id_from), str_from=str_from, num=int(num), raison=raison, ip=self.request.remote_addr).put()
         # on envoie le nouveau nombre de point du reçeveur
@@ -138,6 +139,7 @@ class History(webapp2.RequestHandler):
     # affichage de la page
     def get(self, domain, user):
 
+        scheme = self.request.scheme
         # on récupère les options pour le domaine
         ancestor= get_options(domain)
 
@@ -154,7 +156,7 @@ class History(webapp2.RequestHandler):
                 else:
                     ip = log.ip
                 log.date=log.date.replace(tzinfo=UTC()).astimezone(CET())
-                receiver.append('<td><a href="http://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
+                receiver.append('<td><a href="'+scheme+'://'+domain+'/u'+str(log.id_from)+'">'+cgi.escape(log.str_from)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'</td><td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
         if len(receiver)<1:
             receiver= '<table><tr><td>Jamais re&ccedil;u de points</td></tr></table>';
         else:
@@ -165,7 +167,7 @@ class History(webapp2.RequestHandler):
         if ancestor:
             for log in Log.all().ancestor(ancestor).filter('id_from =',int(user)).order('-date'):
                 if log.raison is None:
-                        log_raison = ""
+                    log_raison = ""
                 else:
                     log_raison = log.raison
                 if log.ip is None:
@@ -173,7 +175,7 @@ class History(webapp2.RequestHandler):
                 else:
                     ip = log.ip
                 log.date=log.date.replace(tzinfo=UTC()).astimezone(CET())
-                sender.append('<td><a href="http://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'<td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
+                sender.append('<td><a href="'+scheme+'://'+domain+'/u'+str(log.id_to)+'">'+cgi.escape(log.str_to)+'</a></td><td>'+str(log.num)+'</td><td>'+cgi.escape(log_raison)+'<td>'+log.date.strftime("%d/%m/%y %Hh%M")+'</td>'+('<td><a href="'+ripe+ip+'">'+ip+'</a></td>' if users.is_current_user_admin() else ''))
         if len(sender)<1:
             sender= '<table><tr><td>Jamais envoy&eacute; de points</td></tr></table>';
         else:
@@ -205,7 +207,7 @@ class History(webapp2.RequestHandler):
 </html>''' % (
                 receiver,
                 sender,
-                'http://'+domain+'/u'+user
+                scheme+'://'+domain+'/u'+user
             )
         )
 
@@ -308,7 +310,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
 </body>
 </html>''' % (
                 cgi.escape(options.admin_username, True),
-                self.request.host_url+self.request.path[:-6],
+                (self.request.host_url+self.request.path[:-6]).partition(':')[2],
                 logs,
                 users.create_logout_url(self.request.uri)
             )
@@ -317,7 +319,7 @@ location.pathname.match(/^\/u[1-9][0-9]*/) &amp;& $(function() {
     # traitement formulaire
     def post(self, domain):
         # on prend le lien jusqu'au troisieme slash
-        link=re.sub(r'^(http://[^/]+)/?.*$',r'\1',self.request.get('link'))
+        link=re.sub(r'^(https?://[^/]+)/?.*$',r'\1',self.request.get('link'))
         # on va chercher charset
         charset_match = re.search('charset=([^"]*)', urllib2.urlopen('http://'+domain+'/admin/login.forum?redirect=/admin').read())
         if charset_match is None:
