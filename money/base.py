@@ -101,10 +101,11 @@ class Change(webapp2.RequestHandler):
             charset = "utf-8"
         else:
             charset = charset_match.group(1)
-        tid=r.geturl()[23+len(scheme+'://'+domain):]
-        if re.match('^[a-f0-9]{32}$',tid) is None:
+        tids = re.findall('[&\?]tid=([a-f0-9]{32})', r.geturl())
+        if not tids:
             self.rep("l'outil de transfert a été mal configuré")
             return
+        tid = tids[0]
         # on va rechercher la page avec le nombre de point du donateur
         r= opener.open(scheme+'://'+domain+'/admin/index.forum?part=modules&sub=point&mode=don&extended_admin=1&tid='+tid, "action=add_points_for_user&search_user="+urllib.quote_plus(re.sub(r'([\\\*%_])',r'\\\1',str_from).encode(charset))+"&submit_search_user=1")
         # on prend le nombre de point du donateur
