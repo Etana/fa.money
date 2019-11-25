@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import webapp2,cgi,re,cookielib,urllib2,urllib,json,datetime
+import webapp2,cgi,re,cookielib,urllib2,urllib,json,datetime,logging
 
 
 from google.appengine.ext import db
@@ -92,7 +92,8 @@ class Change(webapp2.RequestHandler):
         cj = cookielib.CookieJar()
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
         # connexion au forum
-        opener.open(scheme+'://'+domain+'/login.forum','username='+urllib.quote_plus(options.admin_username.encode(options.charset))+'&password='+urllib.quote_plus(options.admin_password.encode(options.charset))+'&login=1&redirect=/admin/&admin=1')
+        original_url = scheme+'://'+domain+'/login.forum'
+        opener.open(original_url,'username='+urllib.quote_plus(options.admin_username.encode(options.charset))+'&password='+urllib.quote_plus(options.admin_password.encode(options.charset))+'&login=1&redirect=/admin/&admin=1')
         # ouverture du panneau d'admin afin de reçevoir un tid qui permet de visiter le panneau
         r = opener.open(scheme+'://'+domain+'/admin')
         # on prend le tid de l'adresse vers laquelle on a été redirigé
@@ -101,8 +102,10 @@ class Change(webapp2.RequestHandler):
             charset = "utf-8"
         else:
             charset = charset_match.group(1)
-        tids = re.findall('[&\?]tid=([a-f0-9]{32})', r.geturl())
+        return_url = r.geturl()
+        tids = re.findall('[&\?]tid=([a-f0-9]{32})', return_url)
         if not tids:
+            logging.error('error configuration: {}'.format({'original_url': original_url, 'unmatched_url': return_url, 'charset': options.charset, 'username': options.admin_username, 'password_length': len(options.admin_password)}))
             self.rep("l'outil de transfert a été mal configuré")
             return
         tid = tids[0]
